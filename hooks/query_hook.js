@@ -6,7 +6,6 @@ import path from "path";
 const REVIEW_DIR = "src/queries";
 
 async function main() {
-  process.exit(0);
   // Read JSON input from stdin
   const input = await new Promise((resolve) => {
     let data = "";
@@ -35,24 +34,28 @@ async function main() {
   // Prepare prompt for analysis
   const newContent =
     toolInput.content || toolInput.contents || toolInput.new_string;
+  const isEdit = !!toolInput.old_string;
+  const editContext = isEdit
+    ? `\nThis is a modification. The following existing code is being replaced:\n<old_content>\n${toolInput.old_string}\n</old_content>\nDo NOT flag the replacement as a duplicate of the code it is replacing.`
+    : "";
   const prompt = `You are reviewing a proposed change to a database query file.
-Your task is to analyze if the new or modified query functions could be 
+Your task is to analyze if the new or modified query functions could be
 accomplished by reusing or slightly modifying existing query functions.
 
 Within reason, we want to prevent duplicate queries from being added into this project,
 so you are seeing if the proposed change will duplicate any existing functionality.
 
-File: ${filePath}
+File: ${filePath}${editContext}
 New content:
 <new_content>
 ${newContent}
 </new_content>
 
 Please research and analyze the existing queries in the ./queries directory and:
-1. Identify any new query functions being added in this change
-2. For each new query function, determine if it could be accomplished by:
+1. Identify any truly new query functions being added (ignore functions that are replacing existing ones shown in <old_content>)
+2. For each genuinely new query function, determine if it could be accomplished by:
    - Using an existing query function as-is
-   - Slightly modifying an existing query function, perhaps by adding additional 
+   - Slightly modifying an existing query function, perhaps by adding additional
       arguments or expanding a select statement
 
 If yes, provide specific feedback on which existing functions could be used instead. Be concise and specific.

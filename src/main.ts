@@ -1,9 +1,9 @@
 import { open } from "sqlite";
 import sqlite3 from "sqlite3";
 
-import { createSchema } from "./schema.js";
-import { sendSlackMessage } from "./slack.js";
-import { getOverduePendingOrders } from "./queries/pending_alerts_queries.js";
+import { createSchema } from "./schema";
+import { getPendingOrders } from "./queries/order_queries";
+import { sendSlackMessage } from "./slack";
 
 async function main() {
   const db = await open({
@@ -13,16 +13,15 @@ async function main() {
 
   await createSchema(db, false);
 
-  const overdueOrders = await getOverduePendingOrders(db, 3);
-
-  for (const order of overdueOrders) {
+  const staleOrders = await getPendingOrders(db, 3);
+  for (const order of staleOrders) {
     const phone = order.phone ?? "no phone on file";
-    const message =
-      `*Pending order alert* — Order #${order.order_number} has been pending for ` +
-      `${order.days_pending} day(s).\n` +
-      `Customer: ${order.customer_name} | Phone: ${phone}`;
-
-    await sendSlackMessage("#order-alerts", message);
+    const days = Math.floor(order.days_pending);
+    await sendSlackMessage(
+      "#order-alerts",
+      `Pending order *${order.order_number}* has been waiting ${days} day(s).\n` +
+        `Customer: ${order.customer_name} — ${phone}`
+    );
   }
 }
 

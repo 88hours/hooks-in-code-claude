@@ -1,11 +1,12 @@
-const SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL;
+const SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL ?? "";
 
 export async function sendSlackMessage(
   channel: string,
   text: string
 ): Promise<void> {
   if (!SLACK_WEBHOOK_URL) {
-    throw new Error("SLACK_WEBHOOK_URL environment variable is not set");
+    console.warn("SLACK_WEBHOOK_URL not set — skipping Slack notification");
+    return;
   }
 
   const response = await fetch(SLACK_WEBHOOK_URL, {
@@ -15,6 +16,6 @@ export async function sendSlackMessage(
   });
 
   if (!response.ok) {
-    throw new Error(`Slack API error: ${response.status} ${response.statusText}`);
+    throw new Error(`Slack webhook failed: ${response.status} ${response.statusText}`);
   }
 }

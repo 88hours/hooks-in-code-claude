@@ -107,23 +107,33 @@ export async function fetchCustomerOrders(
   return rows;
 }
 
-export async function getPendingOrders(db: Database): Promise<any[]> {
-  const query = `
-    SELECT 
-        o.order_id,
-        o.order_date,
-        o.total_amount,
-        c.first_name || ' ' || c.last_name as customer_name,
-        c.phone,
-        julianday('now') - julianday(o.order_date) as days_since_created
-    FROM orders o
-    JOIN customers c ON o.customer_id = c.customer_id
-    WHERE o.status = 'pending'
-    ORDER BY o.order_date
-    `;
+export async function getPendingOrders(
+  db: Database,
+  minDaysOld?: number
+): Promise<any[]> {
+  const ageFilter =
+    minDaysOld !== undefined
+      ? `AND julianday('now') - julianday(o.created_at) > ?`
+      : "";
 
-  const rows = await db.all(query, []);
-  return rows;
+  return db.all(
+    `
+    SELECT
+        o.id,
+        o.order_number,
+        o.total_amount,
+        o.created_at,
+        c.first_name || ' ' || c.last_name AS customer_name,
+        c.phone,
+        julianday('now') - julianday(o.created_at) AS days_pending
+    FROM orders o
+    JOIN customers c ON o.customer_id = c.id
+    WHERE o.status = 'pending'
+    ${ageFilter}
+    ORDER BY o.created_at
+    `,
+    minDaysOld !== undefined ? [minDaysOld] : []
+  );
 }
 
 export async function findOrdersByStatus(
